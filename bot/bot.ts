@@ -1,0 +1,110 @@
+import { Telegraf, Markup } from "telegraf";
+import { getServiceSupabase } from "../lib/supabase";
+
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN as string;
+const WEBAPP_URL = process.env.WEBAPP_URL as string; // e.g. https://em-system.vercel.app
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID; // your Telegram numeric id, for manual /grant
+
+if (!BOT_TOKEN) {
+  throw new Error("TELEGRAM_BOT_TOKEN is not set");
+}
+
+export const bot = new Telegraf(BOT_TOKEN);
+
+const WELCOME_TEXT =
+  "*EmSystem by Yevgeniya Em*\n\n" +
+  "Авторская система обучения микроблейдингу для мастеров, которые хотят повысить качество и предсказуемость своих результатов.";
+
+const openAppKeyboard = Markup.inlineKeyboard([
+  [Markup.button.webApp("Открыть EmSystem", WEBAPP_URL)],
+]);
+
+async function upsertUser(ctx: { from?: { id: number; username?: string; first_name?: string; last_name?: string; language_code?: string } }) {
+  if (!ctx.from) return;
+  const supabase = getServiceSupabase();
+  await supabase.from("users").upsert(
+    {
+      telegram_id: ctx.from.id,
+      username: ctx.from.username ?? null,
+      first_name: ctx.from.first_name ?? null,
+      last_name: ctx.from.last_name ?? null,
+    },
+    { onConflict: "telegram_id", ignoreDuplicates: false }
+  );
+}
+
+bot.start(async (ctx) => {
+  await upsertUser(ctx);
+  await ctx.reply(WELCOME_TEXT, { parse_mode: "Markdown", ...openAppKeyboard });
+});
+
+bot.command("course", (ctx) =>
+  ctx.reply("О курсе EmSystem:", Markup.inlineKeyboard([[Markup.button.webApp("Открыть раздел «О курсе»", `${WEBAPP_URL}/course`)]]))
+);
+
+bot.command("free", (ctx) =>
+  ctx.reply("Бесплатный урок:", Markup.inlineKeyboard([[Markup.button.webApp("Смотреть бесплатный урок", `${WEBAPP_URL}/free-lesson`)]]))
+);
+
+bot.command("works", (ctx) =>
+  ctx.reply("Работы учеников:", Markup.inlineKeyboard([[Markup.button.webApp("Смотреть работы", `${WEBAPP_URL}/works`)]]))
+);
+
+bot.command("faq", (ctx) =>
+  ctx.reply("Частые вопросы:", Markup.inlineKeyboard([[Markup.button.webApp("Открыть FAQ", `${WEBAPP_URL}/faq`)]]))
+);
+
+bot.command("buy", (ctx) =>
+  ctx.reply("Оформление покупки:", Markup.inlineKeyboard([[Markup.button.webApp("Купить курс", `${WEBAPP_URL}/buy`)]]))
+);
+
+bot.command("support", (ctx) =>
+  ctx.reply(
+    "Напишите нам, и мы поможем разобраться перед покупкой. Ответим как можно скорее."
+  )
+);
+
+// Manual access grant for the admin, since checkout currently happens on
+// the external emsystem.me site and there's no automatic payment webhook.
+// Usage (admin only): /grant <telegram_id>
+bot.command("grant", async (ctx) => {
+  if (!ADMIN_CHAT_ID || String(ctx.chat.id) !== ADMIN_CHAT_ID) return;
+  const parts = ctx.message.text.split(" ");
+  const telegramId = Number(parts[1]);
+  if (!telegramId) {
+    await ctx.reply("Использование: /grant <telegram_id>");
+    return;
+  }
+
+  const supabase = getServiceSupabase();
+  const { data: course } = await supabase.from("course").select("id,access_days").eq("is_active", true).limit(1).maybeSingle();
+  const accessDays = course?.access_days ?? 365;
+  const expires = new Date();
+  expires.setDate(expires.getDate() + accessDays);
+
+  await supabase.from("access").insert({
+    telegram_id: telegramId,
+    course_id: course?.id,
+    expires_at: expires.toISOString(),
+    status: "active",
+  });
+
+  await ctx.reply(`Доступ выдан пользователю ${telegramId} до ${expires.toLocaleDateString("ru-RU")}.`);
+  await bot.telegram.sendMessage(
+    telegramId,
+    "🎉 Оплата подтверждена! Добро пожаловать в EmSystem — ваш доступ активирован.",
+    openAppKeyboard
+  );
+});
+
+export async function notifyAdminNewPurchase(details: {
+  username?: string;
+  language: string;
+  amount: string;
+}) {
+  if (!ADMIN_CHAT_ID) return;
+  await bot.telegram.sendMessage(
+    ADMIN_CHAT_ID,
+    `🎉 НОВАЯ ПОКУПКА\n\nEmSystem\n\n👤 Пользователь: @${details.username ?? "—"}\n🌍 Язык: ${details.language}\n💰 Сумма: ${details.amount}\n📅 Дата: ${new Date().toLocaleDateString("ru-RU")}\n✅ Оплата: Успешно`
+  );
+}

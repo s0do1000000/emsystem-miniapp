@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Fraunces", serif;
+  --font-body: "Manrope", sans-serif;
+}
+
+html,
+body {
+  background-color: #16130f;
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Signature element: a single tapered stroke, echoing an individual
+   microblading hair-stroke. Used as dividers, underlines and accents
+   throughout the app instead of generic rules or gradients. */
+.stroke-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  pathLength: 1;
+  animation: stroke-draw-in 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes stroke-draw-in {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+::selection {
+  background: #c7a465;
+  color: #16130f;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
