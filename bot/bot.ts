@@ -5,6 +5,11 @@ const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN as string) || "0:placeholder";
 const WEBAPP_URL = (process.env.WEBAPP_URL as string) || "https://example.com"; // e.g. https://em-system.vercel.app
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID; // your Telegram numeric id, for manual /grant
 
+// Optional: file_ids of videos already uploaded to Telegram once before
+// (via BotFather/any upload), reused here so the bot never re-uploads them.
+const VIDEO_ABOUT_FILE_ID = process.env.VIDEO_ABOUT_FILE_ID;
+const VIDEO_LESSON_FILE_ID = process.env.VIDEO_LESSON_FILE_ID;
+
 if (!process.env.TELEGRAM_BOT_TOKEN) {
   // Doesn't throw at module scope — see the same reasoning in lib/supabase.ts.
   console.warn(
@@ -41,13 +46,25 @@ bot.start(async (ctx) => {
   await ctx.reply(WELCOME_TEXT, { parse_mode: "Markdown", ...openAppKeyboard });
 });
 
-bot.command("course", (ctx) =>
-  ctx.reply("О курсе EmSystem:", Markup.inlineKeyboard([[Markup.button.webApp("Открыть раздел «О курсе»", `${WEBAPP_URL}/course`)]]))
-);
+bot.command("course", async (ctx) => {
+  if (VIDEO_ABOUT_FILE_ID) {
+    await ctx.replyWithVideo(VIDEO_ABOUT_FILE_ID, { caption: "EmSystem by Yevgeniya Em" });
+  }
+  await ctx.reply(
+    "О курсе EmSystem:",
+    Markup.inlineKeyboard([[Markup.button.webApp("Открыть раздел «О курсе»", `${WEBAPP_URL}/course`)]])
+  );
+});
 
-bot.command("free", (ctx) =>
-  ctx.reply("Бесплатный урок:", Markup.inlineKeyboard([[Markup.button.webApp("Смотреть бесплатный урок", `${WEBAPP_URL}/free-lesson`)]]))
-);
+bot.command("free", async (ctx) => {
+  if (VIDEO_LESSON_FILE_ID) {
+    await ctx.replyWithVideo(VIDEO_LESSON_FILE_ID, { caption: "Бесплатный урок EmSystem" });
+  }
+  await ctx.reply(
+    "Бесплатный урок:",
+    Markup.inlineKeyboard([[Markup.button.webApp("Смотреть бесплатный урок", `${WEBAPP_URL}/free-lesson`)]])
+  );
+});
 
 bot.command("works", (ctx) =>
   ctx.reply("Работы учеников:", Markup.inlineKeyboard([[Markup.button.webApp("Смотреть работы", `${WEBAPP_URL}/works`)]]))

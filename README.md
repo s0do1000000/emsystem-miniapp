@@ -145,12 +145,55 @@ npm run bot:dev
 ## 6. Наполнение контентом
 
 Все тексты — в `locales/ru.ts`, это единственный источник контента для
-русского интерфейса. Медиа (фото работ, видео, отзывы, сертификаты)
-добавляются через Supabase Table Editor в таблицы `works`, `reviews`,
-`certificates`, а файлы — в соответствующие Storage buckets. Полноценная
-защищённая админ-панель (раздел 32 ТЗ) — следующий шаг: быстрее всего
-сделать её на базе Supabase Table Editor с ограничением доступа по email,
-либо как отдельный `/admin` роут в этом же Next.js проекте.
+русского интерфейса.
+
+### Видео «О курсе» и «Бесплатный урок»
+
+Это два разных места, и видео в них подключается по-разному:
+
+**В самом боте (сообщение в чате при `/course` и `/free`)** — используется
+`file_id` видео, один раз загруженного в Telegram. Если он у вас уже есть
+(например, от старого бота), просто добавьте в Vercel:
+
+```
+VIDEO_ABOUT_FILE_ID=BAACAgIAAxkBAAPI...
+VIDEO_LESSON_FILE_ID=BAACAgIAAxkBAAPK...
+```
+
+`file_id` работает только для сообщений бота — встроить его как ссылку на
+сайте нельзя.
+
+**В самом Mini App (страницы `/course` и `/free-lesson` на сайте)** —
+нужна обычная публичная ссылка на видеофайл:
+
+1. Supabase → Storage → откройте (или создайте) bucket `course-videos`.
+2. В настройках bucket включите **Public bucket**.
+3. Загрузите туда `welcome.mp4` (видео об авторе) и `welcome2.mp4`
+   (бесплатный урок).
+4. Кликните на файл → скопируйте публичный URL — он будет вида
+   `https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/welcome.mp4`.
+5. В Vercel → Environment Variables добавьте:
+
+```
+NEXT_PUBLIC_ABOUT_VIDEO_URL=https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/welcome.mp4
+NEXT_PUBLIC_FREE_LESSON_VIDEO_URL=https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/welcome2.mp4
+```
+
+6. Redeploy — без этого новые переменные не подхватятся.
+
+Можно задать и постер (обложку до воспроизведения):
+
+```
+NEXT_PUBLIC_ABOUT_VIDEO_POSTER=https://.../cover1.jpg
+NEXT_PUBLIC_FREE_LESSON_VIDEO_POSTER=https://.../cover2.jpg
+```
+
+Остальные медиа (фото работ, отзывы, сертификаты) добавляются через
+Supabase Table Editor в таблицы `works`, `reviews`, `certificates`, а файлы
+— в соответствующие Storage buckets. Полноценная защищённая админ-панель
+(раздел 32 ТЗ) — следующий шаг: быстрее всего сделать её на базе Supabase
+Table Editor с ограничением доступа по email, либо как отдельный `/admin`
+роут в этом же Next.js проекте.
 
 ---
 
