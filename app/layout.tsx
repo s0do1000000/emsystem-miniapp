@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+import { Playfair_Display, Manrope } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import BottomNavigation from "@/components/BottomNavigation";
 
-const fraunces = Fraunces({
+const displayFont = Playfair_Display({
   subsets: ["latin", "cyrillic"],
   variable: "--font-display",
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
 });
 
@@ -33,7 +33,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`${fraunces.variable} ${manrope.variable}`}>
+    <html lang="ru" className={`${displayFont.variable} ${manrope.variable}`}>
       <head>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>
