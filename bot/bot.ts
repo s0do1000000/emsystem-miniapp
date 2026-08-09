@@ -1,12 +1,15 @@
 import { Telegraf, Markup } from "telegraf";
 import { getServiceSupabase } from "../lib/supabase";
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN as string;
-const WEBAPP_URL = process.env.WEBAPP_URL as string; // e.g. https://em-system.vercel.app
+const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN as string) || "0:placeholder";
+const WEBAPP_URL = (process.env.WEBAPP_URL as string) || "https://example.com"; // e.g. https://em-system.vercel.app
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID; // your Telegram numeric id, for manual /grant
 
-if (!BOT_TOKEN) {
-  throw new Error("TELEGRAM_BOT_TOKEN is not set");
+if (!process.env.TELEGRAM_BOT_TOKEN) {
+  // Doesn't throw at module scope — see the same reasoning in lib/supabase.ts.
+  console.warn(
+    "[bot] TELEGRAM_BOT_TOKEN is not set. Set it in Vercel → Project Settings → Environment Variables."
+  );
 }
 
 export const bot = new Telegraf(BOT_TOKEN);
