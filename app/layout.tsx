@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Manrope } from "next/font/google";
 import Script from "next/script";
+import { Suspense } from "react";
 import "./globals.css";
 import BottomNavigation from "@/components/BottomNavigation";
+import { LocaleProvider } from "@/lib/i18n";
 
 const displayFont = Playfair_Display({
   subsets: ["latin", "cyrillic"],
@@ -39,8 +41,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-ink text-goldLight font-body antialiased">
         <div className="mx-auto flex min-h-screen max-w-app flex-col">
-          <main className="flex-1 pb-24">{children}</main>
-          <BottomNavigation />
+          <Suspense fallback={null}>
+            <LocaleProvider>
+              <main className="flex-1 pb-24">{children}</main>
+              <BottomNavigation />
+            </LocaleProvider>
+          </Suspense>
         </div>
       </body>
     </html>

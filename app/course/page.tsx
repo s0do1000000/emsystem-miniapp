@@ -1,10 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import { Play } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import SectionEyebrow from "@/components/SectionEyebrow";
 import ProgramGrid from "@/components/ProgramGrid";
 import CTAButton from "@/components/CTAButton";
-import { ru } from "@/locales/ru";
+import { useLocale } from "@/lib/i18n";
 
 const ABOUT_VIDEO_URL = process.env.NEXT_PUBLIC_ABOUT_VIDEO_URL;
 const ABOUT_VIDEO_POSTER =
@@ -12,12 +14,14 @@ const ABOUT_VIDEO_POSTER =
   "https://thb.tildacdn.com/tild3935-6535-4939-b431-313536626363/-/resize/600x/photo_2026-06-16_12-.jpg";
 
 export default function CoursePage() {
+  const { t } = useLocale();
+
   return (
     <>
-      <PageHeader title={ru.about.title} />
+      <PageHeader title={t.about.title} />
 
       <section className="px-6 pt-6">
-        <SectionEyebrow>{ru.about.videoLabel}</SectionEyebrow>
+        <SectionEyebrow>{t.about.videoLabel}</SectionEyebrow>
         <div className="relative aspect-video overflow-hidden rounded-xl2 border border-line bg-surface">
           {ABOUT_VIDEO_URL ? (
             <video
@@ -45,13 +49,13 @@ export default function CoursePage() {
           )}
         </div>
 
-        <p className="mt-6 text-[15px] leading-relaxed text-goldLight">{ru.about.intro}</p>
-        <p className="mt-4 text-[14px] leading-relaxed text-goldLight/70">{ru.about.body}</p>
+        <p className="mt-6 text-[15px] leading-relaxed text-goldLight">{t.about.intro}</p>
+        <p className="mt-4 text-[14px] leading-relaxed text-goldLight/70">{t.about.body}</p>
 
         <div className="mt-6 rounded-xl2 border border-line bg-surface p-5">
-          <div className="mb-3 font-display italic text-gold">{ru.about.achievementsTitle}</div>
+          <div className="mb-3 font-display italic text-gold">{t.about.achievementsTitle}</div>
           <ul className="flex flex-col gap-2">
-            {ru.about.achievements.map((a) => (
+            {t.about.achievements.map((a) => (
               <li key={a} className="flex gap-2 text-[13px] leading-snug text-goldLight/75">
                 <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-gold" />
                 {a}
@@ -61,14 +65,14 @@ export default function CoursePage() {
         </div>
 
         <div className="mt-6">
-          <CTAButton href="/free-lesson">{ru.about.ctaFree}</CTAButton>
+          <CTAButton href="/free-lesson">{t.about.ctaFree}</CTAButton>
         </div>
       </section>
 
       <ProgramGrid />
 
       <section className="px-6 pb-6">
-        <CTAButton href="/buy">{ru.menu.buyCourse}</CTAButton>
+        <CTAButton href="/buy">{t.menu.buyCourse}</CTAButton>
       </section>
     </>
   );

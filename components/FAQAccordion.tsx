@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
-import { ru } from "@/locales/ru";
+import { useLocale } from "@/lib/i18n";
 
 export default function FAQAccordion() {
   const [open, setOpen] = useState<number | null>(0);
+  const { t } = useLocale();
 
   return (
     <div className="flex flex-col">
-      {ru.faq.items.map((item, i) => {
+      {t.faq.items.map((item, i) => {
         const isOpen = open === i;
         return (
           <div key={item.q} className="border-b border-line">

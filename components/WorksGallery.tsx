@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { ru } from "@/locales/ru";
+import { useLocale } from "@/lib/i18n";
 
 type Tab = "before_after" | "video" | "reviews" | "certificates";
 
@@ -28,14 +28,14 @@ type Review = {
   video_url: string | null;
 };
 
-const tabs: { key: Tab; label: string }[] = [
-  { key: "before_after", label: ru.works.tabs.before_after },
-  { key: "video", label: ru.works.tabs.video },
-  { key: "reviews", label: ru.works.tabs.reviews },
-  { key: "certificates", label: ru.works.tabs.certificates },
-];
-
 export default function WorksGallery() {
+  const { t } = useLocale();
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "before_after", label: t.works.tabs.before_after },
+    { key: "video", label: t.works.tabs.video },
+    { key: "reviews", label: t.works.tabs.reviews },
+    { key: "certificates", label: t.works.tabs.certificates },
+  ];
   const [tab, setTab] = useState<Tab>("before_after");
   const [works, setWorks] = useState<Work[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);

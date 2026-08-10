@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import SectionEyebrow from "./SectionEyebrow";
-import { ru } from "@/locales/ru";
+import { useLocale } from "@/lib/i18n";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 14 },
@@ -14,10 +14,12 @@ const fadeUp = {
 };
 
 export default function TrustBlock() {
+  const { t } = useLocale();
+
   return (
     <section className="px-6 py-10">
       <div className="grid grid-cols-1 gap-3 rounded-xl2 border border-line bg-surface p-5">
-        {[ru.hero.what, ru.hero.forWhom, ru.hero.result].map((h, i) => (
+        {[t.hero.what, t.hero.forWhom, t.hero.result].map((h, i) => (
           <motion.div
             key={h.title}
             custom={i}
@@ -34,9 +36,9 @@ export default function TrustBlock() {
       </div>
 
       <div className="mt-12">
-        <SectionEyebrow>{ru.trust.title}</SectionEyebrow>
+        <SectionEyebrow>{t.trust.title}</SectionEyebrow>
         <div className="grid grid-cols-2 gap-3">
-          {ru.trust.items.map((it, i) => (
+          {t.trust.items.map((it, i) => (
             <motion.div
               key={it.title}
               custom={i}

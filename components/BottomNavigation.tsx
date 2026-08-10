@@ -3,17 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, GraduationCap, Images, HelpCircle, ShoppingBag } from "lucide-react";
-import { ru } from "@/locales/ru";
-
-const items = [
-  { href: "/", label: ru.nav.home, icon: Home },
-  { href: "/course", label: ru.nav.course, icon: GraduationCap },
-  { href: "/works", label: ru.nav.works, icon: Images },
-  { href: "/faq", label: ru.nav.faq, icon: HelpCircle },
-];
+import { useLocale } from "@/lib/i18n";
 
 export default function BottomNavigation() {
   const pathname = usePathname();
+  const { t } = useLocale();
+
+  const items = [
+    { href: "/", label: t.nav.home, icon: Home },
+    { href: "/course", label: t.nav.course, icon: GraduationCap },
+    { href: "/works", label: t.nav.works, icon: Images },
+    { href: "/faq", label: t.nav.faq, icon: HelpCircle },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-app -translate-x-1/2 border-t border-line bg-ink/95 px-3 pb-[env(safe-area-inset-bottom)] backdrop-blur">
@@ -36,7 +37,7 @@ export default function BottomNavigation() {
           className="ml-1 flex flex-1 flex-col items-center gap-1 rounded-xl bg-gold py-1.5 text-[11px] font-semibold text-ink"
         >
           <ShoppingBag size={20} />
-          <span>{ru.nav.buy}</span>
+          <span>{t.nav.buy}</span>
         </Link>
       </div>
     </nav>

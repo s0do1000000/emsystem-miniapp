@@ -5,7 +5,7 @@ import PageHeader from "@/components/PageHeader";
 import CTAButton from "@/components/CTAButton";
 import { supabase } from "@/lib/supabase";
 import { getTelegramWebApp } from "@/lib/telegram";
-import { ru } from "@/locales/ru";
+import { useLocale } from "@/lib/i18n";
 
 type Access = {
   status: string;
@@ -14,6 +14,7 @@ type Access = {
 };
 
 export default function ProfilePage() {
+  const { t } = useLocale();
   const [access, setAccess] = useState<Access | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -40,14 +41,14 @@ export default function ProfilePage() {
 
   return (
     <>
-      <PageHeader title={ru.menu.about} />
+      <PageHeader title={t.menu.about} />
       <section className="px-6 pt-8">
         {loading && <p className="text-sm text-goldLight/50">Загрузка…</p>}
 
         {!loading && access && (
           <div className="rounded-xl2 border border-gold/40 bg-surface p-5">
             <div className="font-display text-lg italic text-gold">
-              {ru.about.title}
+              {t.about.title}
             </div>
             <dl className="mt-4 flex flex-col gap-3 text-[13.5px]">
               <Row label="Статус доступа" value={access.status === "active" ? "Активен" : access.status} />
@@ -59,8 +60,8 @@ export default function ProfilePage() {
 
         {!loading && !access && (
           <div className="rounded-xl2 border border-line bg-surface p-5 text-center">
-            <p className="mb-4 text-sm text-goldLight/70">{ru.pending.text}</p>
-            <CTAButton href="/buy">{ru.pending.cta}</CTAButton>
+            <p className="mb-4 text-sm text-goldLight/70">{t.pending.text}</p>
+            <CTAButton href="/buy">{t.pending.cta}</CTAButton>
           </div>
         )}
       </section>

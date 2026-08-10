@@ -21,11 +21,33 @@ export const bot = new Telegraf(BOT_TOKEN);
 
 const WELCOME_TEXT =
   "*EmSystem by Yevgeniya Em*\n\n" +
-  "Авторская система обучения микроблейдингу для мастеров, которые хотят повысить качество и предсказуемость своих результатов.";
+  "Авторская система обучения микроблейдингу для мастеров, которые хотят повысить качество и предсказуемость своих результатов.\n\n" +
+  "Выберите язык обучения:";
 
 const openAppKeyboard = Markup.inlineKeyboard([
   [Markup.button.webApp("Открыть EmSystem", WEBAPP_URL)],
 ]);
+
+// Languages offered on /start. Add a row here once locales/<code>.ts
+// exists in the Mini App (see lib/i18n.tsx SUPPORTED_LANGS) — each button
+// opens the Mini App with ?lang=<code>, so it launches already translated,
+// no separate in-app language step needed.
+const START_LANGUAGES: { code: string; label: string }[] = [
+  { code: "ru", label: "🇷🇺 Русский" },
+  { code: "en", label: "🇬🇧 English" },
+];
+
+function languageKeyboard() {
+  const buttons = START_LANGUAGES.map((l) =>
+    Markup.button.webApp(l.label, `${WEBAPP_URL}/?lang=${l.code}`)
+  );
+  // two per row
+  const rows: ReturnType<typeof Markup.button.webApp>[][] = [];
+  for (let i = 0; i < buttons.length; i += 2) {
+    rows.push(buttons.slice(i, i + 2));
+  }
+  return Markup.inlineKeyboard(rows);
+}
 
 async function upsertUser(ctx: { from?: { id: number; username?: string; first_name?: string; last_name?: string; language_code?: string } }) {
   if (!ctx.from) return;
@@ -43,7 +65,7 @@ async function upsertUser(ctx: { from?: { id: number; username?: string; first_n
 
 bot.start(async (ctx) => {
   await upsertUser(ctx);
-  await ctx.reply(WELCOME_TEXT, { parse_mode: "Markdown", ...openAppKeyboard });
+  await ctx.reply(WELCOME_TEXT, { parse_mode: "Markdown", ...languageKeyboard() });
 });
 
 bot.command("course", async (ctx) => {

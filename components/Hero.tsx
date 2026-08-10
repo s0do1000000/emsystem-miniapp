@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import Stroke from "./Stroke";
 import CTAButton from "./CTAButton";
-import { ru } from "@/locales/ru";
+import { useLocale } from "@/lib/i18n";
 
 const container = {
   hidden: { opacity: 0 },
@@ -20,6 +20,8 @@ const item = {
 };
 
 export default function Hero() {
+  const { t } = useLocale();
+
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-0">
@@ -40,20 +42,20 @@ export default function Hero() {
         className="relative flex flex-col gap-6 px-6 pb-10 pt-16"
       >
         <motion.span variants={item} className="eyebrow text-gold">
-          {ru.home.kicker}
+          {t.home.kicker}
         </motion.span>
 
         <motion.h1
           variants={item}
           className="font-display text-[2.4rem] italic leading-[1.05] text-goldLight"
         >
-          {ru.home.title.split("\n").map((line) => (
+          {t.home.title.split("\n").map((line) => (
             <span key={line} className="block not-italic font-medium">
               {line}
             </span>
           ))}
           <span className="mt-1 block text-xl not-italic tracking-widest2 text-gold">
-            {ru.home.titleAccent.toUpperCase()}
+            {t.home.titleAccent.toUpperCase()}
           </span>
         </motion.h1>
 
@@ -62,18 +64,18 @@ export default function Hero() {
         </motion.div>
 
         <motion.p variants={item} className="max-w-[38ch] text-[15px] leading-relaxed text-goldLight/80">
-          {ru.home.subtitle}
+          {t.home.subtitle}
         </motion.p>
 
         <motion.div variants={item} className="mt-2 flex flex-col gap-3">
-          <CTAButton href="/course">{ru.home.ctaPrimary}</CTAButton>
+          <CTAButton href="/course">{t.home.ctaPrimary}</CTAButton>
           <CTAButton href="/free-lesson" variant="outline">
-            {ru.home.ctaSecondary}
+            {t.home.ctaSecondary}
           </CTAButton>
         </motion.div>
 
         <motion.div variants={item} className="mt-4 grid grid-cols-4 gap-2 border-t border-line pt-5">
-          {ru.home.stats.map((s) => (
+          {t.home.stats.map((s) => (
             <div key={s.label} className="text-center">
               <div className="font-display text-lg text-gold">{s.value}</div>
               <div className="mt-1 text-[10px] leading-tight text-goldLight/60">{s.label}</div>

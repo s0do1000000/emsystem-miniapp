@@ -1,45 +1,48 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-
-const LANGUAGES = [
-  { code: "ru", label: "Русский" },
-  { code: "en", label: "English" },
-  { code: "de", label: "Deutsch" },
-  { code: "fr", label: "Français" },
-  { code: "es", label: "Español" },
-  { code: "it", label: "Italiano" },
-];
+import { locales, SUPPORTED_LANGS, useLocale } from "@/lib/i18n";
 
 export default function LanguageSwitcher({
   onSelect,
 }: {
   onSelect?: (code: string) => void;
 }) {
-  const [selected, setSelected] = useState("ru");
+  const { lang } = useLocale();
 
   function handleSelect(code: string) {
-    setSelected(code);
+    if (!(code in locales)) return; // not translated yet — button stays disabled
     onSelect?.(code);
   }
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      {LANGUAGES.map((lang) => (
-        <motion.button
-          key={lang.code}
-          onClick={() => handleSelect(lang.code)}
-          whileTap={{ scale: 0.97 }}
-          className={`rounded-xl2 border px-4 py-3 text-sm transition-colors ${
-            selected === lang.code
-              ? "border-gold bg-gold/10 text-gold"
-              : "border-line text-goldLight/70"
-          }`}
-        >
-          {lang.label}
-        </motion.button>
-      ))}
+      {SUPPORTED_LANGS.map((l) => {
+        const available = l.code in locales;
+        const selected = lang === l.code;
+        return (
+          <motion.button
+            key={l.code}
+            disabled={!available}
+            onClick={() => handleSelect(l.code)}
+            whileTap={available ? { scale: 0.97 } : undefined}
+            className={`relative rounded-xl2 border px-4 py-3 text-sm transition-colors ${
+              selected
+                ? "border-gold bg-gold/10 text-gold"
+                : available
+                  ? "border-line text-goldLight/70"
+                  : "border-line/50 text-goldLight/30"
+            }`}
+          >
+            {l.label}
+            {!available && (
+              <span className="absolute right-2 top-2 text-[9px] uppercase tracking-widest2 text-goldLight/30">
+                soon
+              </span>
+            )}
+          </motion.button>
+        );
+      })}
     </div>
   );
 }
