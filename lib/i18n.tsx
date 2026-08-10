@@ -4,11 +4,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { useSearchParams } from "next/navigation";
 import { ru, type Locale } from "@/locales/ru";
 import { en } from "@/locales/en";
+import { fr } from "@/locales/fr";
+import { it } from "@/locales/it";
 
 // Add a new language here once its locales/<code>.ts file exists —
 // everything else (switcher, cookie persistence, bot deep links) picks
 // it up automatically.
-export const locales: Record<string, Locale> = { ru, en };
+export const locales: Record<string, Locale> = { ru, en, fr, it };
 
 export const SUPPORTED_LANGS: { code: string; label: string }[] = [
   { code: "ru", label: "Русский" },

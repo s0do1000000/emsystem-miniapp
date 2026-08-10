@@ -35,6 +35,8 @@ const openAppKeyboard = Markup.inlineKeyboard([
 const START_LANGUAGES: { code: string; label: string }[] = [
   { code: "ru", label: "🇷🇺 Русский" },
   { code: "en", label: "🇬🇧 English" },
+  { code: "fr", label: "🇫🇷 Français" },
+  { code: "it", label: "🇮🇹 Italiano" },
 ];
 
 function languageKeyboard() {
