@@ -6,13 +6,21 @@ import CTAButton from "@/components/CTAButton";
 import Stroke from "@/components/Stroke";
 import { useLocale } from "@/lib/i18n";
 
-const LESSON_VIDEO_URL = process.env.NEXT_PUBLIC_FREE_LESSON_VIDEO_URL;
+// Same pattern as course/page.tsx — one literal env var per language so
+// Next.js can inline each at build time, looked up dynamically at runtime.
+const LESSON_VIDEO_URLS: Record<string, string | undefined> = {
+  ru: process.env.NEXT_PUBLIC_FREE_LESSON_VIDEO_URL_RU || process.env.NEXT_PUBLIC_FREE_LESSON_VIDEO_URL,
+  en: process.env.NEXT_PUBLIC_FREE_LESSON_VIDEO_URL_EN,
+  fr: process.env.NEXT_PUBLIC_FREE_LESSON_VIDEO_URL_FR,
+  it: process.env.NEXT_PUBLIC_FREE_LESSON_VIDEO_URL_IT,
+};
 const LESSON_VIDEO_POSTER =
   process.env.NEXT_PUBLIC_FREE_LESSON_VIDEO_POSTER ??
   "https://static.tildacdn.com/tild3133-3338-4638-a637-666430643439/photo_main.jpg";
 
 export default function FreeLessonPage() {
-  const { t } = useLocale();
+  const { t, lang } = useLocale();
+  const lessonVideoUrl = LESSON_VIDEO_URLS[lang] ?? LESSON_VIDEO_URLS.ru;
 
   return (
     <>
@@ -30,9 +38,9 @@ export default function FreeLessonPage() {
             controls
             playsInline
           >
-            {LESSON_VIDEO_URL && <source src={LESSON_VIDEO_URL} type="video/mp4" />}
+            {lessonVideoUrl && <source src={lessonVideoUrl} type="video/mp4" />}
           </video>
-          {!LESSON_VIDEO_URL && (
+          {!lessonVideoUrl && (
             <div className="pointer-events-none absolute flex h-16 w-16 items-center justify-center rounded-full bg-gold/90 text-ink">
               <Play size={26} fill="currentColor" />
             </div>

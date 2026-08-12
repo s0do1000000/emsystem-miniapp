@@ -172,11 +172,20 @@ VIDEO_LESSON_FILE_ID=BAACAgIAAxkBAAPK...
    (бесплатный урок).
 4. Кликните на файл → скопируйте публичный URL — он будет вида
    `https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/welcome.mp4`.
-5. В Vercel → Environment Variables добавьте:
+5. В Vercel → Environment Variables добавьте нужные языки (не обязательно
+   сразу все — если для языка нет своей переменной, покажется русское
+   видео как запасной вариант):
 
 ```
-NEXT_PUBLIC_ABOUT_VIDEO_URL=https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/welcome.mp4
-NEXT_PUBLIC_FREE_LESSON_VIDEO_URL=https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/welcome2.mp4
+NEXT_PUBLIC_ABOUT_VIDEO_URL_RU=https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/about-ru.mp4
+NEXT_PUBLIC_ABOUT_VIDEO_URL_EN=https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/about-en.mp4
+NEXT_PUBLIC_ABOUT_VIDEO_URL_FR=...
+NEXT_PUBLIC_ABOUT_VIDEO_URL_IT=...
+
+NEXT_PUBLIC_FREE_LESSON_VIDEO_URL_RU=https://<project-ref>.supabase.co/storage/v1/object/public/course-videos/free-lesson-ru.mp4
+NEXT_PUBLIC_FREE_LESSON_VIDEO_URL_EN=...
+NEXT_PUBLIC_FREE_LESSON_VIDEO_URL_FR=...
+NEXT_PUBLIC_FREE_LESSON_VIDEO_URL_IT=...
 ```
 
 6. Redeploy — без этого новые переменные не подхватятся.
