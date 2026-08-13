@@ -15,9 +15,7 @@ export const locales: Record<string, Locale> = { ru, en, fr, it };
 export const SUPPORTED_LANGS: { code: string; label: string }[] = [
   { code: "ru", label: "Русский" },
   { code: "en", label: "English" },
-  { code: "de", label: "Deutsch" },
   { code: "fr", label: "Français" },
-  { code: "es", label: "Español" },
   { code: "it", label: "Italiano" },
 ];
 
