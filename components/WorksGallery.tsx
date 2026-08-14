@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
-import { Play } from "lucide-react";
+import { Play, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useLocale } from "@/lib/i18n";
 
@@ -29,6 +29,7 @@ export default function WorksGallery() {
   const [tab, setTab] = useState<Tab>("before_after");
   const [works, setWorks] = useState<Work[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,15 +76,14 @@ export default function WorksGallery() {
         <div className="grid grid-cols-2 gap-3">
           {works.length === 0 && <EmptyState />}
           {works.map((w, i) => (
-            <motion.a
+            <motion.button
               key={w.id}
-              href={w.video_url ?? undefined}
-              target={w.video_url ? "_blank" : undefined}
-              rel={w.video_url ? "noopener noreferrer" : undefined}
+              type="button"
+              onClick={() => w.video_url && setActiveVideo(w.video_url)}
               initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.05 }}
-              className="group relative aspect-[3/4] overflow-hidden rounded-xl2 border border-line bg-surface"
+              className="group relative aspect-[3/4] overflow-hidden rounded-xl2 border border-line bg-surface text-left"
             >
               {w.image_url ? (
                 <Image
@@ -105,10 +105,40 @@ export default function WorksGallery() {
                   {w.country && <div className="text-[10px] text-goldLight/60">{w.country}</div>}
                 </div>
               )}
-            </motion.a>
+            </motion.button>
           ))}
         </div>
       )}
+
+      <AnimatePresence>
+        {activeVideo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+            onClick={() => setActiveVideo(null)}
+          >
+            <button
+              onClick={() => setActiveVideo(null)}
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-surface/80 text-goldLight"
+              aria-label="Закрыть"
+            >
+              <X size={20} />
+            </button>
+            <motion.video
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              src={activeVideo}
+              controls
+              autoPlay
+              playsInline
+              className="max-h-full max-w-full rounded-xl2"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
