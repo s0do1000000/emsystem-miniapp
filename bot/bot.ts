@@ -1,17 +1,37 @@
 import { Telegraf, Markup } from "telegraf";
+import { InputMediaPhoto, InputMediaVideo } from "telegraf/types";
 import { getServiceSupabase } from "../lib/supabase";
+import {
+  BUY_URL,
+  DEFAULT_LANG,
+  LANGUAGES,
+  Lang,
+  TEXTS,
+  VIDEO_ABOUT_FILE_ID_BY_LANG,
+  VIDEO_LESSON_FILE_ID_BY_LANG,
+  WORKS_CATEGORIES,
+  WORKS_PHOTOS_PAGE_SIZE,
+  WorksCategory,
+} from "./content";
+
+/**
+ * Логика бота EmSystem, портированная из embrowbot/bot.py (Python,
+ * python-telegram-bot, long polling) на Telegraf, чтобы работать через
+ * вебхук на Vercel (serverless — long polling там не поддерживается).
+ *
+ * Т.к. каждый вызов вебхука — отдельный, не связанный с предыдущими HTTP-запрос
+ * (в отличие от одного долгоживущего процесса при polling), язык пользователя
+ * НЕ хранится в памяти процесса. Вместо этого он передаётся прямо внутри
+ * callback_data каждой кнопки (например "menu:root:ru") — это делает бота
+ * полностью stateless и работающим одинаково при холодном и тёплом старте.
+ * Дополнительно язык сохраняется в Supabase (users.language) для истории/аналитики.
+ */
 
 const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN as string) || "0:placeholder";
-const WEBAPP_URL = (process.env.WEBAPP_URL as string) || "https://example.com"; // e.g. https://em-system.vercel.app
-const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID; // your Telegram numeric id, for manual /grant
-
-// Optional: file_ids of videos already uploaded to Telegram once before
-// (via BotFather/any upload), reused here so the bot never re-uploads them.
-const VIDEO_ABOUT_FILE_ID = process.env.VIDEO_ABOUT_FILE_ID;
-const VIDEO_LESSON_FILE_ID = process.env.VIDEO_LESSON_FILE_ID;
+const WEBAPP_URL = (process.env.WEBAPP_URL as string) || "https://example.com";
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
-  // Doesn't throw at module scope — see the same reasoning in lib/supabase.ts.
   console.warn(
     "[bot] TELEGRAM_BOT_TOKEN is not set. Set it in Vercel → Project Settings → Environment Variables."
   );
@@ -19,94 +39,324 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 
 export const bot = new Telegraf(BOT_TOKEN);
 
-const WELCOME_TEXT =
-  "*EmSystem by Yevgeniya Em*\n\n" +
-  "Авторская система обучения микроблейдингу для мастеров, которые хотят повысить качество и предсказуемость своих результатов.\n\n" +
-  "Выберите язык обучения:";
+function isLang(value: string): value is Lang {
+  return value in LANGUAGES;
+}
 
-const openAppKeyboard = Markup.inlineKeyboard([
-  [Markup.button.webApp("Открыть EmSystem", WEBAPP_URL)],
-]);
+function t(lang: Lang) {
+  return TEXTS[lang] ?? TEXTS[DEFAULT_LANG];
+}
 
-// Languages offered on /start. Add a row here once locales/<code>.ts
-// exists in the Mini App (see lib/i18n.tsx SUPPORTED_LANGS) — each button
-// opens the Mini App with ?lang=<code>, so it launches already translated,
-// no separate in-app language step needed.
-const START_LANGUAGES: { code: string; label: string }[] = [
-  { code: "ru", label: "🇷🇺 Русский" },
-  { code: "en", label: "🇬🇧 English" },
-  { code: "fr", label: "🇫🇷 Français" },
-  { code: "it", label: "🇮🇹 Italiano" },
-];
+async function upsertUser(ctx: {
+  from?: { id: number; username?: string; first_name?: string; last_name?: string };
+}, lang?: Lang) {
+  if (!ctx.from) return;
+  try {
+    const supabase = getServiceSupabase();
+    await supabase.from("users").upsert(
+      {
+        telegram_id: ctx.from.id,
+        username: ctx.from.username ?? null,
+        first_name: ctx.from.first_name ?? null,
+        last_name: ctx.from.last_name ?? null,
+        ...(lang ? { language: lang } : {}),
+      },
+      { onConflict: "telegram_id", ignoreDuplicates: false }
+    );
+  } catch (err) {
+    // Не блокируем ответ пользователю, если Supabase недоступен — это
+    // вспомогательная запись для аналитики/админки, а не критичная логика.
+    console.error("[bot] upsertUser failed:", err);
+  }
+}
 
-function languageKeyboard() {
-  const buttons = START_LANGUAGES.map((l) =>
-    Markup.button.webApp(l.label, `${WEBAPP_URL}/?lang=${l.code}`)
+// ============================================================
+// КЛАВИАТУРЫ
+// ============================================================
+
+function languageKeyboard(showBack = false, texts?: ReturnType<typeof t>) {
+  const grid: Lang[][] = [
+    ["en", "ru"],
+    ["fr", "it"],
+  ];
+  const rows = grid.map((row) =>
+    row.map((code) => Markup.button.callback(LANGUAGES[code], `lang:${code}`))
   );
-  // two per row
-  const rows: ReturnType<typeof Markup.button.webApp>[][] = [];
-  for (let i = 0; i < buttons.length; i += 2) {
-    rows.push(buttons.slice(i, i + 2));
+  if (showBack && texts) {
+    rows.push([Markup.button.callback(texts.btn_main_menu, "menu:root")]);
   }
   return Markup.inlineKeyboard(rows);
 }
 
-async function upsertUser(ctx: { from?: { id: number; username?: string; first_name?: string; last_name?: string; language_code?: string } }) {
-  if (!ctx.from) return;
-  const supabase = getServiceSupabase();
-  await supabase.from("users").upsert(
-    {
-      telegram_id: ctx.from.id,
-      username: ctx.from.username ?? null,
-      first_name: ctx.from.first_name ?? null,
-      last_name: ctx.from.last_name ?? null,
-    },
-    { onConflict: "telegram_id", ignoreDuplicates: false }
+function homeKeyboard(lang: Lang, texts: ReturnType<typeof t>) {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback(texts.btn_watch_free_lesson, `menu:free_lesson:${lang}`)],
+  ]);
+}
+
+function freeLessonKeyboard(lang: Lang, texts: ReturnType<typeof t>) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback(texts.btn_works, `menu:works:${lang}`),
+      Markup.button.callback(texts.btn_faq, `menu:faq:${lang}`),
+    ],
+    [
+      Markup.button.callback(texts.btn_main_menu, `menu:root:${lang}`),
+      Markup.button.callback(texts.btn_language, `menu:language:${lang}`),
+    ],
+    [Markup.button.callback(texts.btn_buy, `menu:buy:${lang}`)],
+  ]);
+}
+
+function buyKeyboard(lang: Lang, texts: ReturnType<typeof t>) {
+  return Markup.inlineKeyboard([
+    [Markup.button.url(texts.btn_buy, BUY_URL)],
+    [Markup.button.callback(texts.btn_main_menu, `menu:root:${lang}`)],
+  ]);
+}
+
+function worksMenuKeyboard(lang: Lang, texts: ReturnType<typeof t>) {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback(texts.btn_works_before_after, `works:before_after:0:${lang}`)],
+    [Markup.button.callback(texts.btn_works_certificates, `works:certificates:0:${lang}`)],
+    [Markup.button.callback(texts.btn_works_videos, `works:videos:0:${lang}`)],
+    [Markup.button.callback(texts.btn_buy, `menu:buy:${lang}`)],
+    [Markup.button.callback(texts.btn_main_menu, `menu:root:${lang}`)],
+  ]);
+}
+
+function worksCategoryFooterKeyboard(
+  lang: Lang,
+  texts: ReturnType<typeof t>,
+  category: WorksCategory,
+  nextOffset: number | null
+) {
+  const rows = [];
+  if (nextOffset !== null) {
+    rows.push([Markup.button.callback(texts.btn_works_more, `works:${category}:${nextOffset}:${lang}`)]);
+  }
+  rows.push([Markup.button.callback(texts.btn_works, `menu:works:${lang}`)]);
+  rows.push([Markup.button.callback(texts.btn_buy, `menu:buy:${lang}`)]);
+  rows.push([Markup.button.callback(texts.btn_main_menu, `menu:root:${lang}`)]);
+  return Markup.inlineKeyboard(rows);
+}
+
+function faqListKeyboard(lang: Lang, texts: ReturnType<typeof t>) {
+  const rows = texts.faq_items.map((item, i) => [Markup.button.callback(item.short, `faq:${i}:${lang}`)]);
+  rows.push([Markup.button.callback(texts.btn_main_menu, `menu:root:${lang}`)]);
+  return Markup.inlineKeyboard(rows);
+}
+
+function faqAnswerKeyboard(lang: Lang, texts: ReturnType<typeof t>) {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback(texts.btn_back_to_faq, `menu:faq:${lang}`)],
+    [Markup.button.callback(texts.btn_buy, `menu:buy:${lang}`)],
+    [Markup.button.callback(texts.btn_home, `menu:root:${lang}`)],
+  ]);
+}
+
+// ============================================================
+// ОТПРАВКА ВИДЕО
+// ============================================================
+
+async function sendCourseVideo(
+  chatId: number,
+  lang: Lang,
+  which: "about" | "lesson",
+  replyMarkup?: ReturnType<typeof Markup.inlineKeyboard>
+) {
+  const texts = t(lang);
+  const fileIdMap = which === "about" ? VIDEO_ABOUT_FILE_ID_BY_LANG : VIDEO_LESSON_FILE_ID_BY_LANG;
+  const fileId = fileIdMap[lang] || fileIdMap[DEFAULT_LANG];
+
+  if (!fileId) {
+    await bot.telegram.sendMessage(chatId, texts.video_unavailable, replyMarkup);
+    return;
+  }
+
+  try {
+    await bot.telegram.sendVideo(chatId, fileId, { supports_streaming: true, ...replyMarkup });
+  } catch (err) {
+    console.error(`[bot] sendCourseVideo(${which}, ${lang}) failed:`, err);
+    await bot.telegram.sendMessage(chatId, texts.video_send_failed, replyMarkup);
+  }
+}
+
+// ============================================================
+// ЭКРАНЫ
+// ============================================================
+
+async function showWelcome(chatId: number) {
+  const texts = t(DEFAULT_LANG);
+  await bot.telegram.sendMessage(chatId, texts.welcome_text, languageKeyboard());
+}
+
+async function showMainMenu(chatId: number, lang: Lang) {
+  const texts = t(lang);
+  await sendCourseVideo(chatId, lang, "about");
+  await bot.telegram.sendMessage(chatId, texts.about_caption, homeKeyboard(lang, texts));
+}
+
+async function showFreeLesson(chatId: number, lang: Lang) {
+  const texts = t(lang);
+  await sendCourseVideo(chatId, lang, "lesson", freeLessonKeyboard(lang, texts));
+}
+
+async function showWorks(chatId: number, lang: Lang) {
+  const texts = t(lang);
+  await bot.telegram.sendMessage(chatId, texts.student_works_text, worksMenuKeyboard(lang, texts));
+}
+
+async function showWorksCategory(chatId: number, lang: Lang, category: WorksCategory, offset: number) {
+  const texts = t(lang);
+  const catData = WORKS_CATEGORIES[category];
+  if (!catData) {
+    console.warn(`[bot] unknown works category: ${category}`);
+    return;
+  }
+
+  const { items, type: mediaType } = catData;
+  const pageSize = WORKS_PHOTOS_PAGE_SIZE;
+  const chunk = items.slice(offset, offset + pageSize);
+  const hasMore = items.length > offset + pageSize;
+  const nextOffset = hasMore ? offset + pageSize : null;
+
+  const introKey = `works_${category}_intro` as keyof ReturnType<typeof t>;
+  if (offset === 0 && texts[introKey]) {
+    await bot.telegram.sendMessage(chatId, texts[introKey] as string);
+  }
+
+  if (chunk.length === 0) {
+    await bot.telegram.sendMessage(
+      chatId,
+      texts.works_photos_done,
+      worksCategoryFooterKeyboard(lang, texts, category, null)
+    );
+    return;
+  }
+
+  try {
+    if (chunk.length === 1) {
+      if (mediaType === "video") {
+        await bot.telegram.sendVideo(chatId, chunk[0], { supports_streaming: true });
+      } else {
+        await bot.telegram.sendPhoto(chatId, chunk[0]);
+      }
+    } else {
+      const mediaGroup: (InputMediaPhoto | InputMediaVideo)[] = chunk.map((fileId) =>
+        mediaType === "video" ? { type: "video", media: fileId } : { type: "photo", media: fileId }
+      );
+      await bot.telegram.sendMediaGroup(chatId, mediaGroup);
+    }
+  } catch (err) {
+    console.error(`[bot] showWorksCategory(${category}) media send failed:`, err);
+    await bot.telegram.sendMessage(chatId, texts.video_send_failed);
+  }
+
+  if (nextOffset !== null) {
+    await bot.telegram.sendMessage(
+      chatId,
+      texts.works_continue_prompt,
+      worksCategoryFooterKeyboard(lang, texts, category, nextOffset)
+    );
+  } else {
+    await bot.telegram.sendMessage(
+      chatId,
+      texts.works_photos_done,
+      worksCategoryFooterKeyboard(lang, texts, category, null)
+    );
+  }
+}
+
+async function showFaqList(chatId: number, lang: Lang) {
+  const texts = t(lang);
+  await bot.telegram.sendMessage(chatId, texts.faq_intro_text, faqListKeyboard(lang, texts));
+}
+
+async function showFaqAnswer(chatId: number, lang: Lang, index: number) {
+  const texts = t(lang);
+  const item = texts.faq_items[index];
+  if (!item) return;
+  await bot.telegram.sendMessage(
+    chatId,
+    `❓ ${item.question}\n\n${item.answer}`,
+    faqAnswerKeyboard(lang, texts)
   );
 }
 
+async function showLanguageSelect(chatId: number, lang: Lang) {
+  const texts = t(lang);
+  await bot.telegram.sendMessage(chatId, texts.choose_language_text, languageKeyboard(true, texts));
+}
+
+async function showBuy(chatId: number, lang: Lang) {
+  const texts = t(lang);
+  await bot.telegram.sendMessage(chatId, texts.buy_text, buyKeyboard(lang, texts));
+}
+
+// ============================================================
+// ХЕНДЛЕРЫ
+// ============================================================
+
 bot.start(async (ctx) => {
   await upsertUser(ctx);
-  await ctx.reply(WELCOME_TEXT, { parse_mode: "Markdown", ...languageKeyboard() });
+  await showWelcome(ctx.chat.id);
 });
 
-bot.command("course", async (ctx) => {
-  if (VIDEO_ABOUT_FILE_ID) {
-    await ctx.replyWithVideo(VIDEO_ABOUT_FILE_ID, { caption: "EmSystem by Yevgeniya Em" });
+// lang:<code> — выбор языка на первом экране
+bot.action(/^lang:(\w+)$/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const code = ctx.match[1];
+  const lang: Lang = isLang(code) ? code : DEFAULT_LANG;
+  await upsertUser(ctx, lang);
+  await showMainMenu(ctx.chat!.id, lang);
+});
+
+// menu:<screen>:<lang>
+bot.action(/^menu:(root|about|free_lesson|works|faq|buy|language):(\w+)$/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const [, screen, code] = ctx.match;
+  const lang: Lang = isLang(code) ? code : DEFAULT_LANG;
+  const chatId = ctx.chat!.id;
+
+  switch (screen) {
+    case "root":
+    case "about":
+      await showMainMenu(chatId, lang);
+      break;
+    case "free_lesson":
+      await showFreeLesson(chatId, lang);
+      break;
+    case "works":
+      await showWorks(chatId, lang);
+      break;
+    case "faq":
+      await showFaqList(chatId, lang);
+      break;
+    case "buy":
+      await showBuy(chatId, lang);
+      break;
+    case "language":
+      await showLanguageSelect(chatId, lang);
+      break;
   }
-  await ctx.reply(
-    "О курсе EmSystem:",
-    Markup.inlineKeyboard([[Markup.button.webApp("Открыть раздел «О курсе»", `${WEBAPP_URL}/course`)]])
-  );
 });
 
-bot.command("free", async (ctx) => {
-  if (VIDEO_LESSON_FILE_ID) {
-    await ctx.replyWithVideo(VIDEO_LESSON_FILE_ID, { caption: "Бесплатный урок EmSystem" });
-  }
-  await ctx.reply(
-    "Бесплатный урок:",
-    Markup.inlineKeyboard([[Markup.button.webApp("Смотреть бесплатный урок", `${WEBAPP_URL}/free-lesson`)]])
-  );
+// works:<category>:<offset>:<lang>
+bot.action(/^works:(before_after|certificates|videos):(\d+):(\w+)$/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const [, category, offsetStr, code] = ctx.match;
+  const lang: Lang = isLang(code) ? code : DEFAULT_LANG;
+  await showWorksCategory(ctx.chat!.id, lang, category as WorksCategory, parseInt(offsetStr, 10));
 });
 
-bot.command("works", (ctx) =>
-  ctx.reply("Работы учеников:", Markup.inlineKeyboard([[Markup.button.webApp("Смотреть работы", `${WEBAPP_URL}/works`)]]))
-);
-
-bot.command("faq", (ctx) =>
-  ctx.reply("Частые вопросы:", Markup.inlineKeyboard([[Markup.button.webApp("Открыть FAQ", `${WEBAPP_URL}/faq`)]]))
-);
-
-bot.command("buy", (ctx) =>
-  ctx.reply("Оформление покупки:", Markup.inlineKeyboard([[Markup.button.webApp("Купить курс", `${WEBAPP_URL}/buy`)]]))
-);
-
-bot.command("support", (ctx) =>
-  ctx.reply(
-    "Напишите нам, и мы поможем разобраться перед покупкой. Ответим как можно скорее."
-  )
-);
+// faq:<index>:<lang>
+bot.action(/^faq:(\d+):(\w+)$/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const [, indexStr, code] = ctx.match;
+  const lang: Lang = isLang(code) ? code : DEFAULT_LANG;
+  await showFaqAnswer(ctx.chat!.id, lang, parseInt(indexStr, 10));
+});
 
 // Manual access grant for the admin, since checkout currently happens on
 // the external emsystem.me site and there's no automatic payment webhook.
@@ -137,15 +387,22 @@ bot.command("grant", async (ctx) => {
   await bot.telegram.sendMessage(
     telegramId,
     "🎉 Оплата подтверждена! Добро пожаловать в EmSystem — ваш доступ активирован.",
-    openAppKeyboard
+    Markup.inlineKeyboard([[Markup.button.webApp("Открыть EmSystem", WEBAPP_URL)]])
   );
 });
 
-export async function notifyAdminNewPurchase(details: {
-  username?: string;
-  language: string;
-  amount: string;
-}) {
+bot.on("text", async (ctx) => {
+  // Неизвестная команда/сообщение — просим воспользоваться кнопками.
+  // /start и /grant уже перехвачены выше и сюда не попадают.
+  const texts = t(DEFAULT_LANG);
+  await ctx.reply(texts.unknown_command);
+});
+
+bot.catch((err, ctx) => {
+  console.error(`[bot] Unhandled error for update ${ctx.updateType}:`, err);
+});
+
+export async function notifyAdminNewPurchase(details: { username?: string; language: string; amount: string }) {
   if (!ADMIN_CHAT_ID) return;
   await bot.telegram.sendMessage(
     ADMIN_CHAT_ID,
